@@ -96,8 +96,73 @@ router.post("/register", async (req, res) => {
   }
 });
 
-router.post("/login", (req, res) => {
-  // login logic
+router.post("/login", async (req, res) => {
+  try {
+    const { username, password } = req.body;
+
+    // Check required fields
+    if (!username || !password) {
+      return res.status(400).json({
+        login: false,
+        message: "All fields are required",
+        err: "missing_data",
+      });
+    }
+
+    // Find user
+    const [users] = await db.execute(
+      `SELECT id, username, password
+       FROM users
+       WHERE username = ?`,
+      [username],
+    );
+
+    // Check user exists
+    if (users.length === 0) {
+      return res.status(401).json({
+        login: false,
+        message: "Invalid username or password",
+        err: "invalid_credentials",
+      });
+    }
+
+    const user = users[0];
+
+    // Compare password
+    const isPasswordValid = await bcrypt.compare(password, user.password);
+
+    if (!isPasswordValid) {
+      return res.status(401).json({
+        login: false,
+        message: "Invalid username or password",
+        err: "invalid_credentials",
+      });
+    }
+
+    // Create JWT token
+    const token = jwt.sign(
+      {
+        id: user.id,
+        username: user.username,
+      },
+      process.env.JWT_SECRET,
+    );
+
+    // Login successful
+    return res.status(200).json({
+      login: true,
+      message: "Login successful",
+      token: token,
+    });
+  } catch (err) {
+    console.log(err);
+
+    return res.status(500).json({
+      login: false,
+      message: "Server error",
+      err: "server_error",
+    });
+  }
 });
 
 router.get("/me", async (req, res) => {

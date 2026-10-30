@@ -4,7 +4,6 @@ const mysql = require("mysql2/promise");
 const fs = require("fs");
 const path = require("path");
 
-// Render-এর সিক্রেট পাথ চেক করা, না থাকলে লোকাল পাথ ব্যবহার করা
 const sslCertPath = fs.existsSync("/etc/secrets/ca.pem")
   ? "/etc/secrets/ca.pem"
   : path.join(__dirname, "ca.pem");
@@ -16,7 +15,6 @@ const db = mysql.createPool({
   password: process.env.DB_PASSWORD,
   database: process.env.DB_NAME,
 
-  // Aiven SSL Configuration (Updated for Render Secrets)
   ssl: {
     ca: fs.readFileSync(sslCertPath),
     rejectUnauthorized: true,
@@ -30,7 +28,9 @@ const db = mysql.createPool({
 async function checkDatabase() {
   try {
     const [rows] = await db.query("SELECT 1 AS result");
+
     console.log("Database connected successfully", rows);
+    console.log("SSL certificate:", sslCertPath);
   } catch (err) {
     console.log("Database connection failed");
     console.log("Error code:", err.code);
@@ -41,4 +41,3 @@ async function checkDatabase() {
 checkDatabase();
 
 module.exports = db;
-
