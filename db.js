@@ -1,12 +1,6 @@
 require("dotenv").config();
 
 const mysql = require("mysql2/promise");
-const fs = require("fs");
-const path = require("path");
-
-const sslCertPath = fs.existsSync("/etc/secrets/ca.pem")
-  ? "/etc/secrets/ca.pem"
-  : path.join(__dirname, "ca.pem");
 
 const db = mysql.createPool({
   host: process.env.DB_HOST,
@@ -15,9 +9,9 @@ const db = mysql.createPool({
   password: process.env.DB_PASSWORD,
   database: process.env.DB_NAME,
 
+  // Clever Cloud-এর জন্য এই SSL কনফিগারেশনটি ব্যবহার করুন
   ssl: {
-    ca: fs.readFileSync(sslCertPath),
-    rejectUnauthorized: true,
+    rejectUnauthorized: false, // এটি সেলফ-সাইনড সার্টিফিকেটের ইররটি সমাধান করবে
   },
 
   waitForConnections: true,
@@ -28,9 +22,7 @@ const db = mysql.createPool({
 async function checkDatabase() {
   try {
     const [rows] = await db.query("SELECT 1 AS result");
-
     console.log("Database connected successfully", rows);
-    console.log("SSL certificate:", sslCertPath);
   } catch (err) {
     console.log("Database connection failed");
     console.log("Error code:", err.code);
@@ -41,3 +33,4 @@ async function checkDatabase() {
 checkDatabase();
 
 module.exports = db;
+
