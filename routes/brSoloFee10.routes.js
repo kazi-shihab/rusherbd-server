@@ -29,13 +29,7 @@ function verifyToken(req, res, next) {
   }
 }
 
-// Get all BR Solo Fee 10 matches
-router.get("/test", (req, res) => {
-  res.json({
-    success: true,
-    message: "BR Solo Fee 10 router is working",
-  });
-});
+
 
 router.get("/matches", verifyToken, async (req, res) => {
   try {
