@@ -8,7 +8,9 @@ require("dotenv").config();
 const authRouter = require("./routes/auth.routes");
 const brSoloFee10Router = require("./routes/brSoloFee10.routes");
 const brDuoFee10Router = require("./routes/brDuoFee10.routes");
+
 const adminAuth = require("./adminRoutes/adminAuth.routes");
+const brSoloFee10AdminRouter = require("./adminRoutes/brSolo.routes");
 
 const app = express();
 
@@ -32,9 +34,11 @@ app.get("/", (req, res) => {
 });
 
 app.use("/auth", authRouter);
-app.use("/admin", adminAuth);
 app.use("/br-solo-fee10", brSoloFee10Router);
 app.use("/br-duo-fee10", brDuoFee10Router);
+
+app.use("/admin", adminAuth);
+app.use("/admin", brSoloFee10AdminRouter);
 
 // Socket.IO connection
 io.on("connection", (socket) => {
