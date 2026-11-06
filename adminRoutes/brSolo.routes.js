@@ -55,7 +55,6 @@ router.post("/brsolofee10/room", verifyAdminToken, async (req, res) => {
 
 router.get("/brsolofee10", verifyAdminToken, async (req, res) => {
   try {
-    // Bangladesh local date
     const today = new Intl.DateTimeFormat("en-CA", {
       timeZone: "Asia/Dhaka",
     }).format(new Date());
@@ -74,14 +73,6 @@ router.get("/brsolofee10", verifyAdminToken, async (req, res) => {
 
       WHERE DATE(m.tournament_time) = ?
 
-      -- Match must have at least one joined player
-      AND EXISTS (
-        SELECT 1
-        FROM br_solo_fee10_players AS p
-        WHERE p.match_id = m.id
-      )
-
-      -- No player can have a submitted result
       AND NOT EXISTS (
         SELECT 1
         FROM br_solo_fee10_players AS p
