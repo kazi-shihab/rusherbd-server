@@ -71,20 +71,22 @@ router.get("/brsolofee10", verifyAdminToken, async (req, res) => {
       LEFT JOIN br_solo_fee10_rooms AS r
         ON r.match_id = m.id
 
-      AND NOT EXISTS (
+      WHERE NOT EXISTS (
         SELECT 1
-        FROM br_solo_fee10_players AS p
+        FROM br_solo_fee10_slot AS s
 
         LEFT JOIN br_solo_fee10_prize_history AS ph
-          ON ph.match_id = p.match_id
-          AND ph.user_id = p.user_id
+          ON ph.match_id = s.match_id
+          AND ph.user_id = s.user_id
 
-        WHERE p.match_id = m.id
+        WHERE s.match_id = m.id
           AND (
             ph.kills IS NOT NULL
             OR ph.placement IS NOT NULL
           )
       )
+
+      AND DATE(m.tournament_time) = ?
 
       ORDER BY m.tournament_time ASC
       `,
