@@ -15,7 +15,6 @@ router.post("/brsolofee10/room", verifyAdminToken, async (req, res) => {
       });
     }
 
-    // Check match
     const [matches] = await db.execute(
       `SELECT id FROM br_solo_fee10 WHERE id = ? LIMIT 1`,
       [matchId],
@@ -28,14 +27,13 @@ router.post("/brsolofee10/room", verifyAdminToken, async (req, res) => {
       });
     }
 
-    // Create or update room
     await db.execute(
       `INSERT INTO br_solo_fee10_rooms
-          (match_id, room_id, room_password)
-         VALUES (?, ?, ?)
-         ON DUPLICATE KEY UPDATE
-          room_id = VALUES(room_id),
-          room_password = VALUES(room_password)`,
+        (match_id, room_id, room_password)
+       VALUES (?, ?, ?)
+       ON DUPLICATE KEY UPDATE
+        room_id = VALUES(room_id),
+        room_password = VALUES(room_password)`,
       [matchId, roomId, roomPassword],
     );
 
@@ -55,10 +53,6 @@ router.post("/brsolofee10/room", verifyAdminToken, async (req, res) => {
 
 router.get("/brsolofee10", verifyAdminToken, async (req, res) => {
   try {
-    const today = new Intl.DateTimeFormat("en-CA", {
-      timeZone: "Asia/Dhaka",
-    }).format(new Date());
-
     const [matches] = await db.execute(
       `
       SELECT
@@ -86,25 +80,22 @@ router.get("/brsolofee10", verifyAdminToken, async (req, res) => {
           )
       )
 
-      AND DATE(m.tournament_time) = ?
-
       ORDER BY m.tournament_time ASC
       `,
-      [today],
+      [],
     );
 
     return res.status(200).json({
       success: true,
-      date: today,
       totalMatches: matches.length,
       matches,
     });
   } catch (error) {
-    console.error("Today's BR Solo matches error:", error);
+    console.error("BR Solo matches error:", error);
 
     return res.status(500).json({
       success: false,
-      message: "Failed to fetch today's BR Solo matches",
+      message: "Failed to fetch BR Solo matches",
     });
   }
 });
@@ -116,7 +107,6 @@ router.get(
     try {
       const { matchId } = req.params;
 
-      // Validate Match ID
       if (
         !matchId ||
         !Number.isInteger(Number(matchId)) ||
@@ -128,7 +118,6 @@ router.get(
         });
       }
 
-      // Check Match
       const [matches] = await db.execute(
         `
         SELECT id, tournament_time, status
@@ -146,28 +135,28 @@ router.get(
         });
       }
 
-      // Get Joined Players + Prize History
       const [players] = await db.execute(
         `
         SELECT
-          p.user_id AS userId,
+          s.user_id AS userId,
           u.username,
-          p.game_name AS gameName,
+          s.in_game_name AS gameName,
+          s.slot_number AS slotNumber,
           ph.kills,
           ph.placement
 
-        FROM br_solo_fee10_players AS p
+        FROM br_solo_fee10_slot AS s
 
         INNER JOIN users AS u
-          ON u.id = p.user_id
+          ON u.id = s.user_id
 
         LEFT JOIN br_solo_fee10_prize_history AS ph
-          ON ph.match_id = p.match_id
-          AND ph.user_id = p.user_id
+          ON ph.match_id = s.match_id
+          AND ph.user_id = s.user_id
 
-        WHERE p.match_id = ?
+        WHERE s.match_id = ?
 
-        ORDER BY p.slot_number ASC
+        ORDER BY s.slot_number ASC
         `,
         [matchId],
       );
@@ -248,7 +237,6 @@ router.post("/brsolofee10/payment", verifyAdminToken, async (req, res) => {
   try {
     const { matchId, players } = req.body;
 
-    // Basic Validation
     if (!Number.isInteger(matchId) || matchId <= 0 || !Array.isArray(players)) {
       return res.status(400).json({
         success: false,
@@ -286,11 +274,11 @@ router.post("/brsolofee10/payment", verifyAdminToken, async (req, res) => {
       throw new Error("Match is not finished");
     }
 
-    // 2. Get All Joined Players
+    // 2. Get All Joined Players from Slot Table
     const [joinedPlayers] = await connection.execute(
       `
         SELECT user_id
-        FROM br_solo_fee10_players
+        FROM br_solo_fee10_slot
         WHERE match_id = ?
         FOR UPDATE
         `,
@@ -425,7 +413,6 @@ router.post("/brsolofee10/payment", verifyAdminToken, async (req, res) => {
 
     // 10. Update Wallet and Save Prize History
     for (const player of paymentData) {
-      // Check and Lock Wallet
       const [wallets] = await connection.execute(
         `
           SELECT balance
@@ -440,7 +427,6 @@ router.post("/brsolofee10/payment", verifyAdminToken, async (req, res) => {
         throw new Error(`Wallet not found for user ${player.userId}`);
       }
 
-      // Add Prize to Wallet
       await connection.execute(
         `
           UPDATE wallets
@@ -450,7 +436,6 @@ router.post("/brsolofee10/payment", verifyAdminToken, async (req, res) => {
         [player.prizeAmount, player.userId],
       );
 
-      // Save Prize History
       await connection.execute(
         `
           INSERT INTO br_solo_fee10_prize_history
@@ -493,14 +478,10 @@ router.post("/brsolofee10/payment", verifyAdminToken, async (req, res) => {
     return res.status(200).json({
       success: true,
       message: "All player payments completed successfully",
-
       matchId,
-
       totalPlayers,
       totalKills,
-
       prizeData,
-
       players: paymentData,
     });
   } catch (error) {
