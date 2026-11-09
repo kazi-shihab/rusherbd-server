@@ -71,8 +71,6 @@ router.get("/brsolofee10", verifyAdminToken, async (req, res) => {
       LEFT JOIN br_solo_fee10_rooms AS r
         ON r.match_id = m.id
 
-      WHERE DATE(m.tournament_time) = ?
-
       AND NOT EXISTS (
         SELECT 1
         FROM br_solo_fee10_players AS p
@@ -108,5 +106,85 @@ router.get("/brsolofee10", verifyAdminToken, async (req, res) => {
     });
   }
 });
+
+router.get(
+  "/brsolofee10/:matchId/players",
+  verifyAdminToken,
+  async (req, res) => {
+    try {
+      const { matchId } = req.params;
+
+      // Validate Match ID
+      if (
+        !matchId ||
+        !Number.isInteger(Number(matchId)) ||
+        Number(matchId) <= 0
+      ) {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid Match ID",
+        });
+      }
+
+      // Check Match
+      const [matches] = await db.execute(
+        `
+        SELECT id, tournament_time, status
+        FROM br_solo_fee10
+        WHERE id = ?
+        LIMIT 1
+        `,
+        [matchId],
+      );
+
+      if (matches.length === 0) {
+        return res.status(404).json({
+          success: false,
+          message: "Match not found",
+        });
+      }
+
+      // Get Joined Players + Prize History
+      const [players] = await db.execute(
+        `
+        SELECT
+          p.user_id AS userId,
+          u.username,
+          p.game_name AS gameName,
+          ph.kills,
+          ph.placement
+
+        FROM br_solo_fee10_players AS p
+
+        INNER JOIN users AS u
+          ON u.id = p.user_id
+
+        LEFT JOIN br_solo_fee10_prize_history AS ph
+          ON ph.match_id = p.match_id
+          AND ph.user_id = p.user_id
+
+        WHERE p.match_id = ?
+
+        ORDER BY p.slot_number ASC
+        `,
+        [matchId],
+      );
+
+      return res.status(200).json({
+        success: true,
+        match: matches[0],
+        totalPlayers: players.length,
+        players,
+      });
+    } catch (error) {
+      console.error("BR Solo Match Players Error:", error);
+
+      return res.status(500).json({
+        success: false,
+        message: "Failed to fetch match players",
+      });
+    }
+  },
+);
 
 module.exports = router;
