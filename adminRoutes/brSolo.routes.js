@@ -235,6 +235,9 @@ router.post("/brsolofee10/payment", verifyAdminToken, async (req, res) => {
   let connection;
 
   try {
+    console.log("BR SOLO PAYMENT REQUEST RECEIVED");
+    console.log("Match ID:", req.body.matchId);
+    console.log("Players:", req.body.players?.length);
     const { matchId, players } = req.body;
 
     if (!Number.isInteger(matchId) || matchId <= 0 || !Array.isArray(players)) {
